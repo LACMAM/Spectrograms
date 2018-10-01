@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#! /usr/bin/python3
 
 # processes 1 daily Pxx archive
 # and make an diagram image
@@ -11,8 +11,7 @@ import numpy as np
 # matplotlib.use('Qt5Agg')
 import matplotlib.pyplot as plt
 # import librosa
-from astral import Location, Astral
-# from astral import *
+from astral import Astral, Location
 from datetime import date
 
 station = 'INB - Inicial'
@@ -22,10 +21,11 @@ stations = {'INB - Inicial': ('Pod Inic', -44.647397, -22.516413, -146.8,
                               69.78)}
 
 
-# calculate gain
-# sens = [dB] sensibility hydrophone + conditioner
-# conv_factor = [dB] factor for conversion volt -> wav_units oceanPod
 def get_gain(sens, conv_factor):
+    """ calculate gain
+    sens = [dB] sensibility hydrophone + conditioner
+    conv_factor = [dB] factor for conversion volt -> wav_units oceanPod
+    """
     sens_dB = - (-20*np.log10(1e-6) + sens)
     k1 = 10**(sens_dB/20)
     k2 = 10**(conv_factor/20)
@@ -39,9 +39,10 @@ def get_y_m_d(fpathname):
     return int(year_str), int(month_str), int(day_str)
 
 
-# main #
-# reads one archive (24h)
-if __name__ == '__main__':
+def main():
+    """ main
+    reads one archive (24h)
+    """
 
     if len(sys.argv) < 2:
         print("usage: {} <24h pxx file>".format(sys.argv[0]))
@@ -53,13 +54,12 @@ if __name__ == '__main__':
     # maxval = np.loadtxt(fname_maxval, dtype=np.float32)
 
     # [dB] sensibility hydrophone + conditioner
-    sens = stations[station][3]
+    # sens = stations[station][3]
     # [dB] factor for conversion volt -> wav_units oceanPod
-    conv_factor = stations[station][4]
+    # conv_factor = stations[station][4]
 
-    info = (station, station_state, stations[station][2], stations[station][1],
-            timezone, 100)
-    loc = Location(info)
+    loc = Location(info=(station, station_state, stations[station][2],
+                         stations[station][1], timezone, 100))
 
     pxx = np.loadtxt(fname, dtype=np.float32)
     # print("archive loaded")
@@ -77,13 +77,14 @@ if __name__ == '__main__':
 
     # print('reduce done')
     # pxx_flipped = np.flip(pxx_reduced, 0)
-    # pxx_gained = pxx_reduced * ( 2 ** get_gain(sens, conv_factor))
+    # pxx_gained = pxx_reduced * (2 ** get_gain(sens, conv_factor))
     pxx_gained = pxx_reduced * (2 ** 1)
 
     pxx_dB = 10 * np.log10(pxx_gained/1e-5)
 
     fig, ax = plt.subplots()
-    im = ax.imshow(pxx_dB, origin='lower', cmap='jet', interpolation="none")
+    # im = ax.imshow(pxx_dB, origin='lower', cmap='jet', interpolation="none")
+    ax.imshow(pxx_dB, origin='lower', cmap='jet', interpolation="none")
     # plt.colorbar(im)
     # ax.colorbar()
 
@@ -108,6 +109,7 @@ if __name__ == '__main__':
     sunset = sun['sunset']
     ax.vlines(sunset.hour*60+sunset.minute, 1, 999, colors='gold',
               linestyles='dashed', label='sunrise', linewidth=1)
+
     A = Astral()
     moonphase = A.moon_phase(imagedate)
     if moonphase <= 3.5:
@@ -119,8 +121,8 @@ if __name__ == '__main__':
     else:
         moon_str = 'last quarter'
 
-    image_title = (station + ' ' + imagedate.strftime('%d %b %Y') +
-                   ' Moon Phase: ' + moon_str)
+    image_title = station + ' ' + imagedate.strftime('%d %b %Y') + \
+        ' Moon Phase: ' + moon_str
     ax.set_title(image_title)
     fig.savefig('image1.png')
     # plt.show()
@@ -129,3 +131,7 @@ if __name__ == '__main__':
     # fig2, ax2 = plt.subplots()
     # im = ax2.imshow(melogram)
     # plt.show()
+
+
+if __name__ == '__main__':
+    main()
