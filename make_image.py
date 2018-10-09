@@ -6,6 +6,7 @@
 
 import sys
 # import os
+from os import path, listdir
 import numpy as np
 # import matplotlib
 # matplotlib.use('Qt5Agg')
@@ -32,10 +33,10 @@ def get_gain(sens, conv_factor):
     return k2/k1
 
 
-def get_y_m_d(fpathname):
-    fname = fpathname.split('/')[-1]
-    fname_short = fname.split('.')[0]
-    pxx_str, year_str, month_str, day_str = fname_short.split('_')
+def get_y_m_d(fileFullPath):
+    fileBaseName = path.basename(fileFullPath)
+    fileName = path.splitext(fileBaseName)[0]
+    pxx_str, year_str, month_str, day_str = fileName.split('_')
     return int(year_str), int(month_str), int(day_str)
 
 
@@ -49,19 +50,15 @@ def main():
         # print(f"usage: {sys.argv[0]} <24h pxx file> <max value file>")
         sys.exit(1)
 
-    fname = sys.argv[1]
-    # fname_maxval = sys.argv[2]
-    # maxval = np.loadtxt(fname_maxval, dtype=np.float32)
-
-    # [dB] sensibility hydrophone + conditioner
-    # sens = stations[station][3]
-    # [dB] factor for conversion volt -> wav_units oceanPod
-    # conv_factor = stations[station][4]
-
     loc = Location(info=(station, station_state, stations[station][2],
                          stations[station][1], timezone, 100))
 
-    pxx = np.loadtxt(fname, dtype=np.float32)
+    fileFullPath = sys.argv[1]
+    fileBaseName = path.basename(fileFullPath)
+    fileName = path.splitext(fileBaseName)[0]
+
+    # for f in os.listdir(dirPath)
+    pxx = np.loadtxt(fileFullPath, dtype=np.float32)
     # print("archive loaded")
     pxx_reduced = np.zeros((1000, 1440))
     count = 0
@@ -98,7 +95,7 @@ def main():
     ax.set_ylabel("Frequency [kHz]")
     ax.set_xlabel("Daytime [h in UTC]")
 
-    y, m, d = get_y_m_d(fname)
+    y, m, d = get_y_m_d(fileFullPath)
     imagedate = date(y, m, d)
     sun = loc.sun(local=True, date=imagedate)
 
@@ -124,7 +121,7 @@ def main():
     image_title = station + ' ' + imagedate.strftime('%d %b %Y') + \
         ' Moon Phase: ' + moon_str
     ax.set_title(image_title)
-    fig.savefig('image1.png')
+    fig.savefig(fileName + '.png')
     # plt.show()
 
     # melogram = librosa.feature.melspectrogram(S=pxx, n_fft=12000)
