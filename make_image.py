@@ -1,65 +1,61 @@
 #! /usr/bin/python3
 
 # processes 1 daily Pxx archive
-# and make an diagram image
+# and make an diagram image 
 # f(freq, t)
 
 import sys
-# import os
-from os import path, listdir
+import os
 import numpy as np
-# import matplotlib
-# matplotlib.use('Qt5Agg')
+import matplotlib
+#matplotlib.use('Qt5Agg')
 import matplotlib.pyplot as plt
-# import librosa
-from astral import Astral, Location
+#import librosa
+from astral import *
 from datetime import date
 
-station = 'INB - Inicial'
-station_state = 'São Paulo'
+station = 'INB - Inter'
+station_state = 'Resende'
 timezone = "Etc/UTC"
-stations = {'INB - Inicial': ('Pod Inic', -44.647397, -22.516413, -146.8,
-                              69.78)}
+stations = {'INB - Inter': ('Pod Inter', -44.654804, -22.519284, -146.8, 69.78)}
 
-
+# calculate gain
+# sens = [dB] sensibility hydrophone + conditioner
+# conv_factor = [dB] factor for conversion volt -> wav_units oceanPod
 def get_gain(sens, conv_factor):
-    """ calculate gain
-    sens = [dB] sensibility hydrophone + conditioner
-    conv_factor = [dB] factor for conversion volt -> wav_units oceanPod
-    """
-    sens_dB = - (-20*np.log10(1e-6) + sens)
+    sens_dB = - ( -20*np.log10(20e-6) + sens)
     k1 = 10**(sens_dB/20)
     k2 = 10**(conv_factor/20)
     return k2/k1
 
-
-def get_y_m_d(fileFullPath):
-    fileBaseName = path.basename(fileFullPath)
-    fileName = path.splitext(fileBaseName)[0]
-    pxx_str, year_str, month_str, day_str = fileName.split('_')
+def get_y_m_d(fpathname):
+    fname = fpathname.split('/')[-1]
+    fname_short = fname.split('.')[0]
+    pxx_str, year_str, month_str, day_str = fname_short.split('_')
     return int(year_str), int(month_str), int(day_str)
 
 
-def main():
-    """ main
-    reads one archive (24h)
-    """
+### main ###
+
+# reads one archive (24h)
+if __name__ == '__main__':
 
     if len(sys.argv) < 2:
         print("usage: {} <24h pxx file>".format(sys.argv[0]))
-        # print(f"usage: {sys.argv[0]} <24h pxx file> <max value file>")
+        #print(f"usage: {sys.argv[0]} <24h pxx file> <max value file>")
         sys.exit(1)
 
-    loc = Location(info=(station, station_state, stations[station][2],
-                         stations[station][1], timezone, 100))
+    fname = sys.argv[1]
+    #fname_maxval = sys.argv[2]
+    #maxval = np.loadtxt(fname_maxval, dtype=np.float32)
 
-    fileFullPath = sys.argv[1]
-    fileBaseName = path.basename(fileFullPath)
-    fileName = path.splitext(fileBaseName)[0]
+    sens = stations[station][3]             # [dB] sensibility hydrophone + conditioner
+    conv_factor = stations[station][4]      # [dB] factor for conversion volt -> wav_units oceanPod
+    
+    loc = Location(info = (station, station_state, stations[station][2], stations[station][1], timezone, 100))
 
-    # for f in os.listdir(dirPath)
-    pxx = np.loadtxt(fileFullPath, dtype=np.float32)
-    # print("archive loaded")
+    pxx = np.loadtxt(fname, dtype=np.float32)
+    #print("archive loaded")
     pxx_reduced = np.zeros((1000, 1440))
     count = 0
     # spectrum is 16001 x 1440
@@ -69,45 +65,41 @@ def main():
         spec_line = row.copy()[1:]
         # decrement num of freq
         # sum up 12 values for each new spectrum
-        pxx_reduced[:, count] = spec_line.reshape(1000, 16).mean(axis=1)
-        count += 1
+        pxx_reduced[:,count] = spec_line.reshape(1000, 16).mean(axis=1)
+        count +=1
 
-    # print('reduce done')
-    # pxx_flipped = np.flip(pxx_reduced, 0)
-    # pxx_gained = pxx_reduced * (2 ** get_gain(sens, conv_factor))
-    pxx_gained = pxx_reduced * (2 ** 1)
+    #print('reduce done')
+    #pxx_flipped = np.flip(pxx_reduced, 0)
+    #pxx_gained = pxx_reduced * ( 2 ** get_gain(sens, conv_factor))
+    pxx_gained = pxx_reduced * ( 2 ** 1)
 
-    pxx_dB = 10 * np.log10(pxx_gained/1e-5)
-
+    pxx_dB = 20 * np.log10(pxx_gained/20e-6)
+   
     fig, ax = plt.subplots()
-    # im = ax.imshow(pxx_dB, origin='lower', cmap='jet', interpolation="none")
-    ax.imshow(pxx_dB, origin='lower', cmap='jet', interpolation="none")
-    # plt.colorbar(im)
-    # ax.colorbar()
+    im = ax.imshow(pxx_dB, origin='lower', cmap='jet', interpolation="none")
+    plt.colorbar(im)
+    #ax.colorbar() 
 
-    num_hours = 24
-    ax.set_xticks([h*60 for h in range(num_hours)])
-    ax.set_xticklabels([hl for hl in range(num_hours)])
-
-    ax.set_yticks([f*100*10/16 for f in range(16+1)])
-    ax.set_yticklabels([fl for fl in range(16+1)])
-
+    num_hours = 24    
+    ax.set_xticks( [ h*60 for h in range(num_hours) ] )
+    ax.set_xticklabels( [ hl for hl in range(num_hours) ]  )
+    
+    ax.set_yticks( [ f*100*10/16 for f in range(16+1) ] )
+    ax.set_yticklabels( [ fl for fl in range(16+1) ]  )
+   
     ax.set_ylabel("Frequency [kHz]")
     ax.set_xlabel("Daytime [h in UTC]")
 
-    y, m, d = get_y_m_d(fileFullPath)
+    y,m,d = get_y_m_d(fname)
     imagedate = date(y, m, d)
     sun = loc.sun(local=True, date=imagedate)
-
+    
     sunrise = sun['sunrise']
-    ax.vlines(sunrise.hour*60+sunrise.minute, 1, 999, colors='gold',
-              linestyles='dashed', label='sunrise', linewidth=1)
-
+    ax.vlines(sunrise.hour*60+sunrise.minute, 1, 999, colors='gold', linestyles='dashed', label='sunrise', linewidth=1)
+    
     sunset = sun['sunset']
-    ax.vlines(sunset.hour*60+sunset.minute, 1, 999, colors='gold',
-              linestyles='dashed', label='sunrise', linewidth=1)
-
-    A = Astral()
+    ax.vlines(sunset.hour*60+sunset.minute, 1, 999, colors='gold', linestyles='dashed', label='sunrise', linewidth=1)
+    A = Astral() 
     moonphase = A.moon_phase(imagedate)
     if moonphase <= 3.5:
         moon_str = 'new moon'
@@ -118,17 +110,14 @@ def main():
     else:
         moon_str = 'last quarter'
 
-    image_title = station + ' ' + imagedate.strftime('%d %b %Y') + \
-        ' Moon Phase: ' + moon_str
+    image_title = station + ' ' + imagedate.strftime('%d %b %Y') + ' Moon Phase: ' + moon_str
     ax.set_title(image_title)
-    fig.savefig(fileName + '.png')
-    # plt.show()
+    fig.savefig(station + '_' + imagedate.strftime('%d_%b_%Y') + '.png')
 
-    # melogram = librosa.feature.melspectrogram(S=pxx, n_fft=12000)
-    # fig2, ax2 = plt.subplots()
-    # im = ax2.imshow(melogram)
-    # plt.show()
+    #plt.show()
 
+    #melogram = librosa.feature.melspectrogram(S=pxx, n_fft=12000)
+    #fig2, ax2 = plt.subplots()
+    #im = ax2.imshow(melogram)
+    #plt.show()
 
-if __name__ == '__main__':
-    main()
