@@ -1,7 +1,7 @@
 #! /usr/bin/python3
 
 # processes 1 daily Pxx archive
-# and make an diagram image 
+# and make an diagram image
 # f(freq, t)
 
 import sys
