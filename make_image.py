@@ -5,7 +5,7 @@
 # f(freq, t)
 
 import sys
-# import os
+from os import path, listdir
 import numpy as np
 # import matplotlib
 # matplotlib.use('Qt5Agg')
@@ -21,10 +21,11 @@ stations = {'INB - Inter': ('Pod Inter', -44.654804, -22.519284, -146.8,
                             69.78)}
 
 
-# calculate gain
-# sens = [dB] sensibility hydrophone + conditioner
-# conv_factor = [dB] factor for conversion volt -> wav_units oceanPod
 def get_gain(sens, conv_factor):
+    """ calculate gain
+    sens = [dB] sensibility hydrophone + conditioner
+    conv_factor = [dB] factor for conversion volt -> wav_units oceanPod
+    """
     sens_dB = - (-20*np.log10(20e-6) + sens)
     k1 = 10**(sens_dB/20)
     k2 = 10**(conv_factor/20)
@@ -38,9 +39,9 @@ def get_y_m_d(fpathname):
     return int(year_str), int(month_str), int(day_str)
 
 
-# ## main ## #
-# reads one archive (24h)
 if __name__ == '__main__':
+    """ reads one archive (24h)
+    """
 
     if len(sys.argv) < 2:
         print("usage: {} <24h pxx file>".format(sys.argv[0]))
