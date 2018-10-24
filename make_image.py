@@ -32,15 +32,16 @@ def get_gain(sens, conv_factor):
     return k2/k1
 
 
-def get_y_m_d(fpathname):
-    fname = fpathname.split('/')[-1]
-    fname_short = fname.split('.')[0]
-    pxx_str, year_str, month_str, day_str = fname_short.split('_')
+def get_y_m_d(fileFullPath):
+    fileBaseName = path.basename(fileFullPath)
+    fileName = path.splitext(fileBaseName)[0]
+    pxx_str, year_str, month_str, day_str = fileName.split('_')
     return int(year_str), int(month_str), int(day_str)
 
 
-if __name__ == '__main__':
-    """ reads one archive (24h)
+def main():
+    """ main
+    reads one archive (24h)
     """
 
     if len(sys.argv) < 2:
@@ -60,7 +61,12 @@ if __name__ == '__main__':
     loc = Location(info=(station, station_state, stations[station][2],
                          stations[station][1], timezone, 100))
 
-    pxx = np.loadtxt(fname, dtype=np.float32)
+    fileFullPath = sys.argv[1]
+    fileBaseName = path.basename(fileFullPath)
+    fileName = path.splitext(fileBaseName)[0]
+
+    # for f in os.listdir(dirPath)
+    pxx = np.loadtxt(fileFullPath, dtype=np.float32)
     # print("archive loaded")
     pxx_reduced = np.zeros((1000, 1440))
     count = 0
@@ -82,8 +88,9 @@ if __name__ == '__main__':
     pxx_dB = 20 * np.log10(pxx_gained/20e-6)
 
     fig, ax = plt.subplots()
-    im = ax.imshow(pxx_dB, origin='lower', cmap='jet', interpolation="none")
-    plt.colorbar(im)
+    # im = ax.imshow(pxx_dB, origin='lower', cmap='jet', interpolation="none")
+    ax.imshow(pxx_dB, origin='lower', cmap='jet', interpolation="none")
+    # plt.colorbar(im)
     # ax.colorbar()
 
     num_hours = 24
@@ -96,7 +103,7 @@ if __name__ == '__main__':
     ax.set_ylabel("Frequency [kHz]")
     ax.set_xlabel("Daytime [h in UTC]")
 
-    y, m, d = get_y_m_d(fname)
+    y, m, d = get_y_m_d(fileFullPath)
     imagedate = date(y, m, d)
     sun = loc.sun(local=True, date=imagedate)
 
@@ -122,6 +129,7 @@ if __name__ == '__main__':
                    ' Moon Phase: ' + moon_str)
     ax.set_title(image_title)
     fig.savefig(station + '_' + imagedate.strftime('%d_%b_%Y') + '.png')
+    # fig.savefig(fileName + '.png')
 
     # plt.show()
 
@@ -129,3 +137,7 @@ if __name__ == '__main__':
     # fig2, ax2 = plt.subplots()
     # im = ax2.imshow(melogram)
     # plt.show()
+
+
+if __name__ == '__main__':
+    main()
