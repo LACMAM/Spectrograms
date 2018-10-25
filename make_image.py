@@ -61,82 +61,85 @@ def main():
     loc = Location(info=(station, station_state, stations[station][2],
                          stations[station][1], timezone, 100))
 
-    fileFullPath = sys.argv[1]
-    fileBaseName = path.basename(fileFullPath)
-    fileName = path.splitext(fileBaseName)[0]
+    dirPath = sys.argv[1]
 
-    # for f in os.listdir(dirPath)
-    pxx = np.loadtxt(fileFullPath, dtype=np.float32)
-    # print("archive loaded")
-    pxx_reduced = np.zeros((1000, 1440))
-    count = 0
-    # spectrum is 16001 x 1440
-    # reduce 16001 -> 1200
-    for row in pxx.T:
-        # discard DC freq
-        spec_line = row.copy()[1:]
-        # decrement num of freq
-        # sum up 12 values for each new spectrum
-        pxx_reduced[:, count] = spec_line.reshape(1000, 16).mean(axis=1)
-        count += 1
+    for fileName in listdir(dirPath):
+        if fileName.endswith('.txt'):
+            fileFullPath = path.join(dirPath, fileName)
+            print(fileFullPath)
 
-    # print('reduce done')
-    # pxx_flipped = np.flip(pxx_reduced, 0)
-    # pxx_gained = pxx_reduced * ( 2 ** get_gain(sens, conv_factor))
-    pxx_gained = pxx_reduced * (2 ** 1)
+            pxx = np.loadtxt(fileFullPath, dtype=np.float32)
+            # print("archive loaded")
+            pxx_reduced = np.zeros((1000, 1440))
+            count = 0
+            # spectrum is 16001 x 1440
+            # reduce 16001 -> 1200
+            for row in pxx.T:
+                # discard DC freq
+                spec_line = row.copy()[1:]
+                # decrement num of freq
+                # sum up 12 values for each new spectrum
+                pxx_reduced[:, count] = spec_line.reshape(1000, 16).mean(axis=1)
+                count += 1
 
-    pxx_dB = 20 * np.log10(pxx_gained/20e-6)
+            # print('reduce done')
+            # pxx_flipped = np.flip(pxx_reduced, 0)
+            # pxx_gained = pxx_reduced * ( 2 ** get_gain(sens, conv_factor))
+            pxx_gained = pxx_reduced * (2 ** 1)
 
-    fig, ax = plt.subplots()
-    # im = ax.imshow(pxx_dB, origin='lower', cmap='jet', interpolation="none")
-    ax.imshow(pxx_dB, origin='lower', cmap='jet', interpolation="none")
-    # plt.colorbar(im)
-    # ax.colorbar()
+            ## Cuidado!!! pxx esta vindo com zeros!!
+            pxx_dB = 20 * np.log10(max(pxx_gained/20e-6, 1e-6))
 
-    num_hours = 24
-    ax.set_xticks([h*60 for h in range(num_hours)])
-    ax.set_xticklabels([hl for hl in range(num_hours)])
+            fig, ax = plt.subplots()
+            # im = ax.imshow(pxx_dB, origin='lower', cmap='jet', interpolation="none")
+            ax.imshow(pxx_dB, origin='lower', cmap='jet', interpolation="none")
+            # plt.colorbar(im)
+            # ax.colorbar()
 
-    ax.set_yticks([f*100*10/16 for f in range(16+1)])
-    ax.set_yticklabels([fl for fl in range(16+1)])
+            num_hours = 24
+            ax.set_xticks([h*60 for h in range(num_hours)])
+            ax.set_xticklabels([hl for hl in range(num_hours)])
 
-    ax.set_ylabel("Frequency [kHz]")
-    ax.set_xlabel("Daytime [h in UTC]")
+            ax.set_yticks([f*100*10/16 for f in range(16+1)])
+            ax.set_yticklabels([fl for fl in range(16+1)])
 
-    y, m, d = get_y_m_d(fileFullPath)
-    imagedate = date(y, m, d)
-    sun = loc.sun(local=True, date=imagedate)
+            ax.set_ylabel("Frequency [kHz]")
+            ax.set_xlabel("Daytime [h in UTC]")
 
-    sunrise = sun['sunrise']
-    ax.vlines(sunrise.hour*60+sunrise.minute, 1, 999, colors='gold',
-              linestyles='dashed', label='sunrise', linewidth=1)
+            y, m, d = get_y_m_d(fileFullPath)
+            imagedate = date(y, m, d)
+            sun = loc.sun(local=True, date=imagedate)
 
-    sunset = sun['sunset']
-    ax.vlines(sunset.hour*60+sunset.minute, 1, 999, colors='gold',
-              linestyles='dashed', label='sunrise', linewidth=1)
-    A = Astral()
-    moonphase = A.moon_phase(imagedate)
-    if moonphase <= 3.5:
-        moon_str = 'new moon'
-    elif moonphase <= 10.5:
-        moon_str = 'first quarter'
-    elif moonphase <= 17.5:
-        moon_str = 'full moon'
-    else:
-        moon_str = 'last quarter'
+            sunrise = sun['sunrise']
+            ax.vlines(sunrise.hour*60+sunrise.minute, 1, 999, colors='gold',
+                    linestyles='dashed', label='sunrise', linewidth=1)
 
-    image_title = (station + ' ' + imagedate.strftime('%d %b %Y') +
-                   ' Moon Phase: ' + moon_str)
-    ax.set_title(image_title)
-    fig.savefig(station + '_' + imagedate.strftime('%d_%b_%Y') + '.png')
-    # fig.savefig(fileName + '.png')
+            sunset = sun['sunset']
+            ax.vlines(sunset.hour*60+sunset.minute, 1, 999, colors='gold',
+                    linestyles='dashed', label='sunrise', linewidth=1)
+            A = Astral()
+            moonphase = A.moon_phase(imagedate)
+            if moonphase <= 3.5:
+                moon_str = 'new moon'
+            elif moonphase <= 10.5:
+                moon_str = 'first quarter'
+            elif moonphase <= 17.5:
+                moon_str = 'full moon'
+            else:
+                moon_str = 'last quarter'
 
-    # plt.show()
+            image_title = (station + ' ' + imagedate.strftime('%d %b %Y') +
+                        ' Moon Phase: ' + moon_str)
+            ax.set_title(image_title)
+            fig.savefig(station + '_' + imagedate.strftime('%d_%b_%Y') + '.png')
+            # fig.savefig(fileName + '.png')
 
-    # melogram = librosa.feature.melspectrogram(S=pxx, n_fft=12000)
-    # fig2, ax2 = plt.subplots()
-    # im = ax2.imshow(melogram)
-    # plt.show()
+            # plt.show()
+
+            # melogram = librosa.feature.melspectrogram(S=pxx, n_fft=12000)
+            # fig2, ax2 = plt.subplots()
+            # im = ax2.imshow(melogram)
+            # plt.show()
 
 
 if __name__ == '__main__':
